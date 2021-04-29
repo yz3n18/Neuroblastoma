@@ -353,18 +353,18 @@ fit<-survfit(Surv(Day_survival,Event) ~ Zhou_Subgroup, data=GSE49710_Westermann_
 fit<-survfit(Surv(Day_survival,Event) ~ Zhou_Subgroup, data=GSE49710_Westermann_LR)
 
 KMsurvival_plot<-ggsurvplot(fit,data=GSE49710_Westermann_HR,pval = TRUE, #show p-value of log-rank test
-                            #conf.int = TRUE, #添加置信区间
+                            #conf.int = TRUE, #
                             pval.size=10,
                             legend.labs =  c("Subgroup1",'Subgroup2','Subgroup3'),
                             legend.title='', 
                             xlab = "Time in Day",   ###  customize X axis label
                             #xlim=c(0,50),
-                            break.x.by=1000, ###改变
+                            break.x.by=1000, ###
                             ylab=paste0('Overall survival'),
                             surv.median.line = "hv", 
                             palette = c('#7CAE00','#00BFC4', '#C77CFF'), 
                             #font.main = c(16, "bold", "darkblue"),
-                            font.x = 40, # X 轴
+                            font.x = 40, # X 
                             font.y = 35, # c(14, "bold.italic", "darkred"), 
                             font.tickslab = 30,# c(12, "plain", "darkgreen"), 
                             #conf.int.style = "step",  ###  customize style of confidence intervals
