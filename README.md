@@ -1,2 +1,2 @@
 # Neuroblastoma
-Subgroups of patients within MYCN non-amplified neuroblastomas towards precision prognosis and therapy stratification 
+Identification of MYCN non-amplified neuroblastoma subgroups points towards molecular signatures for precision prognosis and therapy stratification
