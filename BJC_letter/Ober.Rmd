@@ -1,0 +1,101 @@
+---
+title: "Oberthuer-Predictor"
+author: "Yilu"
+date: "12/10/2021"
+output: html_document
+---
+
+```{r}
+# 1.Metadata ####
+# Metadata is downloaded from https://ascopubs.org/doi/suppl/10.1200/jco.2009.27.3367/suppl_file/Supplementary_Table1_Clinical_Covariates_FINAL.xls
+Metadata<-read.xlsx('Supplementary_Table1_Clinical_Covariates_FINAL.xlsx',sheet = 1)
+# 440 samples, 
+Metadata$files<-paste0('US22502540_',Metadata$`Array-Barcode`,'_S01_A01.txt')
+```
+
+```{r}
+# load Validation sample from https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-161/files/raw/
+datapath1 = "/Users/yihuawang/Neuroblastoma/BJC/E-MTAB-161.raw.1/"
+files1 <- list.files(path = datapath1) %>% intersect(.,Metadata$files)
+print(length(files1)) 
+setdiff(Metadata$files,files1) # some txt files end with S02_A01/02 rather than S01_A01
+```
+
+ [1] "US22502540_251496110519_S01_A01.txt" "US22502540_251496110531_S01_A01.txt"
+ [3] "US22502540_251271410675_S01_A01.txt" "US22502540_251271410677_S01_A01.txt"
+ [5] "US22502540_251496110491_S01_A01.txt" "US22502540_251496110494_S01_A01.txt"
+ [7] "US22502540_251496110467_S01_A01.txt" "US22502540_251496110530_S01_A01.txt"
+ [9] "US22502540_251496110495_S01_A01.txt" "US22502540_251496110529_S01_A01.txt"
+[11] "US22502540_251496110040_S01_A01.txt" "US22502540_251496110525_S01_A01.txt"
+[13] "US22502540_251271410676_S01_A01.txt" "US22502540_251271410681_S01_A01.txt"
+[15] "US22502540_251271410674_S01_A01.txt" "US22502540_251271410680_S01_A01.txt"
+[17] "US22502540_251496110528_S01_A01.txt" "US22502540_251496110526_S01_A01.txt"
+[19] "US22502540_251496110527_S01_A01.txt" "US22502540_251496110488_S01_A01.txt"
+[21] "US22502540_251496110489_S01_A01.txt"
+
+```{r} 
+# mannually add S02_A01/02 files, but only find 431 samples  
+files1[420]<-'US22502540_251496110531_S02_A01.txt'
+files1[421]<-'US22502540_251496110531_S02_A02.txt'
+files1[422]<-'US22502540_251496110530_S02_A01.txt'
+files1[423]<-'US22502540_251496110530_S02_A02.txt'
+files1[424]<-'US22502540_251496110529_S02_A01.txt'
+files1[425]<-'US22502540_251496110529_S02_A02.txt'
+files1[426]<-'US22502540_251496110528_S02_A01.txt'
+files1[427]<-'US22502540_251496110528_S02_A02.txt'
+files1[428]<-'US22502540_251496110526_S02_A01.txt'
+files1[429]<-'US22502540_251496110526_S02_A02.txt'
+files1[430]<-'US22502540_251496110527_S02_A01.txt'
+files1[431]<-'US22502540_251496110527_S02_A02.txt'
+```
+
+```{r}
+# Agilent analysis
+rawdata  = read.maimages(files=files1, path=datapath1, source="agilent",green.only=TRUE,
+                             annotation= c("Row", "Col","FeatureNum", "ProbeUID", "ControlType","ProbeName", "GeneName", "SystematicName"), verbose=FALSE)
+save(rawdata,Metadata, file="E-MTAB-161_431sample.RData") 
+```
+
+## IV. select overlapping probes for both datasets
+rawdat.test & rawdat.training have different filenames and different number of probes(10707 vs 44708)
+This step is to ensure the same probe between two datas 
+```{r}
+load('/Users/yihuawang/Neuroblastoma/BJC/rawdata.training.RData') # load your training data
+print(dim(rawdat.training))
+print(dim(rawdata))
+
+```
+
+```{r}
+
+rawdat.training$genes$ProbeName<-str_replace(rawdat.training$genes$ProbeName,"UKv4_", "") # make 
+
+overlap_probe<-as.data.frame(unique(intersect(rawdat.training$genes$ProbeName,
+                                              rawdata$genes$ProbeName)))
+colnames(overlap_probe)<-'Overlap_probe'
+
+match_values_train_in_test<-as.data.frame(match(overlap_probe$Overlap_probe,
+                                                rawdata$genes$ProbeName)) # the indexes of train values in rawdat.test
+
+
+
+
+match_values_test_in_train<-as.data.frame(match(overlap_probe$Overlap_probe,
+                                                rawdat.training$genes$ProbeName))
+
+
+# duplicate probe: 1263172, NM_116016.1, NM_113067.2, 145422
+match_values_duplicate<-as.data.frame(match(c( '1263172', 'NM_116016.1', 'NM_113067.2', '145422'),
+                                            rawdat.test$genes$ProbeName))
+rawdat.test_new<-rawdat.test[-match_values_duplicate$`match(c("1263172", "NM_116016.1", "NM_113067.2", "145422"), rawdat.test$genes$ProbeName)`,]
+
+files2<-c()
+
+
+rawdat.training_new<-rawdat.training[match_values_test_in_train$`match(overlap_probe$Overlap_probe, rawdat.training$genes$ProbeName)`,]
+
+rawdat.test_new<-rawdata[match_values_train_in_test$`match(overlap_probe$Overlap_probe, rawdata$genes$ProbeName)`,]
+
+
+```
+
