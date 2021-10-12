@@ -1,0 +1,150 @@
+---
+title: "Oberthuer-Predictor"
+author: "Yilu"
+date: "12/10/2021"
+output: html_document
+---
+
+# 1.Metadata ####
+```{r}
+# Metadata is downloaded from https://ascopubs.org/doi/suppl/10.1200/jco.2009.27.3367/suppl_file/Supplementary_Table1_Clinical_Covariates_FINAL.xls
+Metadata<-read.xlsx('Supplementary_Table1_Clinical_Covariates_FINAL.xlsx',sheet = 1)
+# 440 samples, 
+Metadata$files<-paste0('US22502540_',Metadata$`Array-Barcode`,'_S01_A01.txt')
+```
+
+# 2.Raw data ####
+```{r}
+# load Validation sample from https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-161/files/raw/
+datapath1 = "/Users/yihuawang/Neuroblastoma/BJC/E-MTAB-161.raw.1/"
+files1 <- list.files(path = datapath1) %>% intersect(.,Metadata$files)
+print(length(files1)) 
+setdiff(Metadata$files,files1) # some txt files end with S02_A01/02 rather than S01_A01
+```
+
+```{r} 
+# mannually add S02_A01/02 files, but only find 431 samples  
+files1[420]<-'US22502540_251496110531_S02_A01.txt'
+files1[421]<-'US22502540_251496110531_S02_A02.txt'
+files1[422]<-'US22502540_251496110530_S02_A01.txt'
+files1[423]<-'US22502540_251496110530_S02_A02.txt'
+files1[424]<-'US22502540_251496110529_S02_A01.txt'
+files1[425]<-'US22502540_251496110529_S02_A02.txt'
+files1[426]<-'US22502540_251496110528_S02_A01.txt'
+files1[427]<-'US22502540_251496110528_S02_A02.txt'
+files1[428]<-'US22502540_251496110526_S02_A01.txt'
+files1[429]<-'US22502540_251496110526_S02_A02.txt'
+files1[430]<-'US22502540_251496110527_S02_A01.txt'
+files1[431]<-'US22502540_251496110527_S02_A02.txt'
+```
+
+# 3.Agilent analysis
+```{r}
+rawdata  = read.maimages(files=files1, path=datapath1, source="agilent",green.only=TRUE,
+                             annotation= c("Row", "Col","FeatureNum", "ProbeUID", "ControlType","ProbeName", "GeneName", "SystematicName"), verbose=FALSE)
+save(rawdata,Metadata, file="E-MTAB-161_431sample.RData") 
+```
+
+# 4.Directly run rawdata
+```{r}
+load("E-MTAB-161_431sample.RData") # load test data
+load('/Users/yihuawang/Neuroblastoma/BJC/rawdata.training.RData') # load your training data
+normalize_roma <- function(rawdat.test){
+  ncol <- ncol(rawdat.test)
+  rawdat.test <- cbind(rawdat.test, rawdat.training)
+  
+  G.mat <- backgroundCorrect(rawdat.test, method="normexp")
+  G.mat.quantnorm.test.asinh = asinh(normalizeQuantiles(G.mat$E))
+  
+  virtual.median = apply(G.mat.quantnorm.test.asinh, 1, median, na.rm = TRUE)
+  M.quantnorm.test = G.mat.quantnorm.test.asinh-virtual.median
+  #M.quantnorm.test = G.mat.quantnorm.test.asinh
+  
+  ctrl.spots = rawdat.test$genes$ControlType!=0 
+  gene.names = rawdat.test$genes$ProbeName[!ctrl.spots]
+  M.quantnorm.test = M.quantnorm.test[!ctrl.spots,]
+  
+  M.quantnorm.test <- as.matrix(M.quantnorm.test)
+  dimnames(M.quantnorm.test) <- list(gene.names, colnames(rawdat.test$E))
+  rownames(M.quantnorm.test) = sub("UKv4_", "", rownames(M.quantnorm.test))
+  #colnames(M.quantnorm.test)= sub("US22502540_", "", colnames(G.mat$E))
+  #colnames(M.quantnorm.test)= sub("SG14245029_", "", colnames(G.mat$E))
+  
+  #now let's remove training samples from normalized data
+  M.quantnorm.test <- M.quantnorm.test[,1:ncol]
+  return(M.quantnorm.test)
+}
+
+# now let's create an expressionset
+M.quantnorm <- normalize_roma(rawdata)
+eset_norm <- ExpressionSet(assayData = assayDataNew(exprs = M.quantnorm))
+```
+
+# 5.Error may due to different probe number?
+```{r}
+print(dim(rawdat.training))
+print(dim(rawdata))
+```
+
+# 6.Select overlapping probes for both datasets
+```{r}
+rawdat.training$genes$ProbeName<-str_replace(rawdat.training$genes$ProbeName,"UKv4_", "") # remove UKv4_
+overlap_probe<-as.data.frame(unique(intersect(rawdat.training$genes$ProbeName,
+                                              rawdata$genes$ProbeName)))
+colnames(overlap_probe)<-'Overlap_probe'
+
+match_values_test<-as.data.frame(match(overlap_probe$Overlap_probe,
+                                                rawdata$genes$ProbeName)) # the indexes of values in rawdat.test
+match_values_train<-as.data.frame(match(overlap_probe$Overlap_probe,
+                                                rawdat.training$genes$ProbeName)) # the indexes of values in training.test
+rawdat.training_new<-rawdat.training[match_values_train$`match(overlap_probe$Overlap_probe, rawdat.training$genes$ProbeName)`,]
+rawdat.test_new<-rawdata[match_values_test$`match(overlap_probe$Overlap_probe, rawdata$genes$ProbeName)`,]
+
+```
+
+# 7.Check probe number again?
+```{r}
+print(dim(rawdat.training_new))
+print(dim(rawdat.test_new))
+```
+
+# 8.Run rawdat.test_new
+```{r}
+normalize_roma <- function(rawdat.test){
+  ncol <- ncol(rawdat.test)
+  rawdat.test <- cbind(rawdat.test, rawdat.training_new)
+  
+  G.mat <- backgroundCorrect(rawdat.test, method="normexp")
+  G.mat.quantnorm.test.asinh = asinh(normalizeQuantiles(G.mat$E))
+  
+  virtual.median = apply(G.mat.quantnorm.test.asinh, 1, median, na.rm = TRUE)
+  M.quantnorm.test = G.mat.quantnorm.test.asinh-virtual.median
+  #M.quantnorm.test = G.mat.quantnorm.test.asinh
+  
+  ctrl.spots = rawdat.test$genes$ControlType!=0 
+  gene.names = rawdat.test$genes$ProbeName[!ctrl.spots]
+  M.quantnorm.test = M.quantnorm.test[!ctrl.spots,]
+  
+  M.quantnorm.test <- as.matrix(M.quantnorm.test)
+  dimnames(M.quantnorm.test) <- list(gene.names, colnames(rawdat.test$E))
+  rownames(M.quantnorm.test) = sub("UKv4_", "", rownames(M.quantnorm.test))
+  #colnames(M.quantnorm.test)= sub("US22502540_", "", colnames(G.mat$E))
+  #colnames(M.quantnorm.test)= sub("SG14245029_", "", colnames(G.mat$E))
+  
+  #now let's remove training samples from normalized data
+  M.quantnorm.test <- M.quantnorm.test[,1:ncol]
+  return(M.quantnorm.test)
+}
+M.quantnorm <- normalize_roma(rawdat.test_new)
+eset_norm <- ExpressionSet(assayData = assayDataNew(exprs = M.quantnorm))
+```
+
+#9.Run predict model
+```{r}
+library(e1071)
+load("svm.model2.RData")
+fs <- colnames(svm.model$SV)
+print(length(fs))
+svm.pred <- predict(svm.model, newdata=t(M.quantnorm[fs,]), probability = T)
+write.csv(cbind(as.character(svm.pred), attr(svm.pred, "probabilities")), file="predictions.csv")
+```
