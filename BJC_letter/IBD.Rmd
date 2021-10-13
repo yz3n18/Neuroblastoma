@@ -5,14 +5,7 @@ date: "06/10/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## R Markdown
-
-
-load packages
+# 1.load packages
 ```{r,echo=FALSE}
 library(CEMiTool)
 library(dplyr)
@@ -21,17 +14,9 @@ library(doParallel) ##
 registerDoParallel(cores=4)
 library(preprocessCore)
 ```
-for (i in 1:681){
-  IBD_meta$[i]<-paste0(IBD_meta$Class[i],'_',i)
-}
 
-for (i in 682:1049){
-  IBD_meta$Class[i]<-paste0(IBD_meta$Class[i],'_',(i-681))
-}
-
-laod data
+# 2.laod data
 ```{r, echo=FALSE}
-
 IBD_meta<-read.table('/Users/yihuawang/Downloads/IBD_sub.txt',header = T,sep = '\t') %>% 
   filter(Diagnosis=='CD' | Diagnosis=='UC')%>%
   rename('SampleName'='IID',
@@ -48,185 +33,98 @@ IBD<-read.table('/Users/yihuawang/Downloads/GENEPY_JULY2021_all.matrix.txt',head
   row_to_names(row_number = 1)%>%
   select(IBD_meta$SampleName)
 IBD[,1:1049] <- sapply(IBD[,1:1049], as.numeric) # 9130 genes with 0 expression in IBD[,1]
+```
 
+# 3.check basic feature of this matrix
+```{r}
+#### PCA ####
+library(factoextra)
+IBD_filter<-IBD[rowSums(IBD > 2),] # remove rows with low values
+data_t <- t(as.matrix(IBD_filter))
+variableL <- ncol(data_t)
+pca <- prcomp(data_t[,1:variableL], scale=T)
+#fviz_pca_ind(pca, repel=T)  
+data_t<-as.data.frame(data_t)
+data_t$conditions<-as.character(IBD_meta$Class)
+#pdf('PCA_withoutremovebatch.pdf',width = 8,height = 8)
+fviz_pca_ind(pca, col.ind=data_t$conditions, mean.point=F, addEllipses = T, legend.title="Dataset",
+             geom.ind = "point")+scale_shape_manual(values=seq(0,17))+theme_classic()
 
+```
 
+# 4.Sample correlation heatmap
+```{r}
+res <- cor(IBD_filter)
+col<- colorRampPalette(c("blue", "white", "red"))(20)
+heatmap(x = res, col = col, symm = TRUE)
+
+IBD2<-IBD
+colnames(IBD2)<-IBD_meta$Class
+res <- cor(IBD2)
+col<- colorRampPalette(c("blue", "white", "red"))(20)
+heatmap(x = res, col = col, symm = TRUE)
+pdf('cor.pdf',width = 20,height = 20)
+heatmap(x = res, col = col, symm = TRUE)
+dev.off()
+```
+
+# 5. Load GMT and PPI files
+```{r}
 mads=apply(IBD,1,mad) ### measured by median absolute deviation
 IBD_mad=IBD[rev(order(mads))[1:5000],] ### top 5000 variable genes
-IBD_mad = sweep(IBD_mad,1, apply(IBD_mad,1,median,na.rm=T))
-```
-
-
-```{r}
-IBD2<-normalize.quantiles(as.matrix(IBD))
-rownames(IBD2)<-rownames(IBD)
-colnames(IBD2)<-colnames(IBD)
-IBD3<-log(IBD2)
-
-```
-
-
-
-
-construct a CEMiTool object with both expression data and sample annotation:
-```{r}
-
-```
-
-run CEMiTool
-```{r}
-# # run cemitool with sample annotation
-cem <- cemitool(as.data.frame(IBD3), IBD_meta,
-                cor_method =  "spearman")
-
-```
-
-
-```{r}
-
-powers = c(c(1:10), seq(from = 12, to=20, by=2))
-sft = pickSoftThreshold(IBD_mad, 
-                        powerVector = powers, verbose = 5)
-pdf(file = paste("SFTPlot2.pdf",sep = "."),width = 10,height = 7)
-par(mfrow = c(1,2));
-cex1 = 0.9;
-plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
-     xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit,signed R^2",type="n",
-     main = paste("Scale independence"));
-text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
-     labels=powers,cex=cex1,col="red");
-# this line corresponds to using an R^2 cut-off of h
-#abline(h=0.90,col="red")
-abline(h=0.85,col="blue")
-# Mean connectivity as a function of the soft-thresholding power
-plot(sft$fitIndices[,1], sft$fitIndices[,5],
-     xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
-     main = paste("Mean connectivity"))
-text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1,col="red")
-dev.off()
-
-
-```
-```{r}
-#### WGCNA step by step ####
-datExpr<-IBD_mad
-softPower = 5
-adjacency = adjacency(datExpr, power = softPower,type='signed hybrid')
-?adjacency
-## Topological Overlap Matrix (TOM)
-TOM = TOMsimilarity(adjacency,
-                    TOMType = "signed")
-dissTOM = 1-TOM
-## Clustering using TOM
-geneTree = hclust(as.dist(dissTOM), method = "average")#
-# Plot the resulting clustering tree (dendrogram)
-pdf('WGCNA_geneTree_Signhybrid.pdf',width = 100,height = 10)
-plot(geneTree, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",
-     labels = FALSE, hang = 0.04)
-dev.off()
-# We like large modules, so we set the minimum module size relatively high:
-minModuleSize = 100
-# Module identification using dynamic tree cut:
-dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM,
-                            deepSplit = 2, pamRespectsDendro = FALSE,
-                            minClusterSize = minModuleSize);
-table(dynamicMods)
-# Convert numeric lables into colors
-dynamicColors = labels2colors(dynamicMods)
-table(dynamicColors)
-# Plot the dendrogram and colors underneath
-sizeGrWindow(8,6)
-pdf('WGCNA_geneTree_100.pdf',width = 100,height = 10)
-plotDendroAndColors(geneTree, dynamicColors, "Dynamic Tree Cut",
-                    dendroLabels = FALSE, hang = 0.03,
-                    addGuide = TRUE, guideHang = 0.05,
-                    main = "Gene dendrogram and module colors")
-dev.off()
-# Calculate eigengenes
-MEList = moduleEigengenes(datExpr, colors = dynamicColors)
-MEs = MEList$eigengenes
-MEDiss = 1-cor(MEs);
-# Cluster module eigengenes
-METree = hclust(as.dist(MEDiss), method = "average")
-MEDissThres = 0.25
-plotEigengeneNetworks(MEs, 
-                      "Eigengene adjacency heatmap", 
-                      marHeatmap = c(3,4,2,2), 
-                      plotDendrograms = FALSE, 
-                      xLabelsAngle = 90) 
-# Calculate dissimilarity of module eigengenes
-# Plot the result
-pdf('WGCNA_MergedgeneTree_100.pdf',width = 100,height = 10)
-plot(METree, main = "Clustering of module eigengenes",
-     xlab = "", sub = "")
-abline(h=MEDissThres, col = "red")
-dev.off()
-# Call an automatic merging function
-merge = mergeCloseModules(datExpr, dynamicColors, cutHeight = MEDissThres, verbose = 3)
-# The merged module colors
-mergedColors = merge$colors;
-# Eigengenes of the new merged modules:
-mergedMEs = merge$newMEs
-table(mergedColors)
-pdf('WGCNA_MergedgeneTree_new_100.pdf',width = 10,height = 10)
-plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
-                    c("Dynamic Tree Cut", "Merged dynamic"),
-                    dendroLabels = FALSE, hang = 0.03,
-                    addGuide = TRUE, guideHang = 0.05)
-dev.off()
-```
-
-Trouble interpreting differences in hub genes from interaction networks
-https://github.com/csbl-usp/CEMiTool/issues/78
-I admit it's a bit confusing at first, but the way it works is: blue is if your gene is a hub considering edges in your module only, green is if it is a hub considering both your module and interaction file edges, red if it is a hub in the interaction file edges only. In other words, being in the module or the interaction file is not enough, they must be hubs in both to warrant the green color. Does that make sense?
-
-To sum up, blue ones are module hub genes, red ones are interaction database hub genes, but green ones are hubs in both our module and interaction database.
-
-```{r}
-bwnet = blockwiseModules(IBD, maxBlockSize = 2000,
-                     power = 4, TOMType = "unsigned", minModuleSize = 30,
-reassignThreshold = 0, mergeCutHeight = 0.25, numericLabels = TRUE,
-saveTOMs = TRUE,
-saveTOMFileBase = "femaleMouseTOM-blockwise", verbose = 3)
-```
-
-```{r}
-library("CEMiTool")
-data(expr0)
-head(expr0[,1:4])
-cem <- cemitool(expr0, sample_annot)
-cem
-```
-
-```{r}
-gmt_fname <- system.file("extdata", "pathways.gmt", package = "CEMiTool")
-gmt_in <- read_gmt(gmt_fname)
-cem <- mod_ora(cem, gmt_in)
-int_fname <- system.file("extdata", "interactions.tsv", package = "CEMiTool")
-int_df <- read.delim(int_fname)
+#IBD_mad = sweep(IBD_mad,1, apply(IBD_mad,1,median,na.rm=T))
+#write(rownames(IBD_mad),'IBD_mad_varing_genes.txt',sep = '\t')
+# read Interactions file
+int_df<-read.csv('/Users/yihuawang/Downloads/String Network - 1 default edge copy.csv',header = T,sep = ',')
 head(int_df)
+
+# read GMT file
+gmt_hallmark <- read_gmt('/Users/yihuawang/Downloads/h.all.v7.4.symbols.gmt')
+gmt_kegg <- read_gmt('/Users/yihuawang/Downloads/c2.cp.kegg.v7.4.symbols.gmt')
+gmt_go <- read_gmt('/Users/yihuawang/Downloads/c5.go.v7.4.symbols.gmt')
 ```
 
+# 6.Failed to run weighted correlation network analysis: No modules found
 ```{r}
-library(ggplot2)
-interactions_data(cem) <- int_df # add interactions
-cem <- plot_interactions(cem) # generate plot
-plots <- show_plot(cem, "interaction") # view the plot for the first module
-plots[1]
-```
-```{r}
-library(ggplot2)
-cem <- cemitool(expr0, sample_annot, gmt_in, interactions=int_df, 
-                filter=TRUE, plot=TRUE, verbose=TRUE)
+cem <- cemitool(as.data.frame(IBD_mad),IBD_meta,gmt_go,interactions=int_df,
+                set_beta=2,filter=TRUE, plot=F, verbose=TRUE)
+
+
 # create report as html document
-generate_report(cem, directory="./Report")
+generate_report(cem, directory="./Report",force=TRUE)
 
 # write analysis results into files
-write_files(cem, directory="./Tables")
+write_files(cem, directory="./Tables",force=TRUE)
 
 # save all plots
-save_plots(cem, "all", directory="./Plots")
+save_plots(cem, "all", directory="./Plots",force=TRUE)
+```
+# cemitool tips
+1. Check if your data contain at least 20 samples, which we consider to be the very least for any meaningful analysis.| pass
+2. Make sure your data were normalized adequately prior to running CEMiTool. Normalization techniques which have been used successfully in the past include RPKM, FPKM, TMM, quantile... | need to consider
+3. You can see if your data have too much dependence between the mean and variance. If this is the case, using the apply_vst = TRUE parameter can help. | need to consider
+4. Another possibility is that CEMiTool was too stringent in the beta selection step of analysis. You can check this by using plot_beta_r2(cem), and then show_plot(cem, "beta_r2"). You can then manually select a beta value with the set_beta value.
+5. Finally, you can make CEMiTool select a beta value based on the number of samples you have with the force_beta parameter.
+6. Please see the WGCNA FAQ for more info and caveats on the last point, specifically item 6.
+
+# 7.fold change values of top5000 varying genes 
+```{r}
+IBD_mad_CD<-IBD_mad[,IBD_meta[IBD_meta$Class== 'CD',1]]
+IBD_mad_UC<-IBD_mad[,IBD_meta[IBD_meta$Class== 'UC',1]]
+IBD_mad_FC<-as.data.frame(IBD_mad_CD[,1])
+colnames(IBD_mad_FC)<-'FC'
+rownames(IBD_mad_FC)<-rownames(IBD_mad_CD)
+IBD_mad_FC$FC<-log2(rowMeans(IBD_mad_CD)/rowMeans(IBD_mad_UC))
 ```
 
+# 8.Create Gephi input files
+```{r}
+IBD_mad_FC$Gene<-rownames(IBD_mad_FC)
 
+int_df<-read.csv('/Users/yihuawang/Downloads/String Network - 1 default edge copy.csv',header = T,sep = ',')
 
+input_node<-as.data.frame(unique(c(int_df$gene1symbol,int_df$gene2symbol)))
+colnames(input_node)<-'Gene'
+input_node<-merge(input_node,IBD_mad_FC,by='Gene')
+write.table(input_node,'input_node.csv',sep = ',')
+```
