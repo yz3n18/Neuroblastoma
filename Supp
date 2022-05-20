@@ -1,0 +1,229 @@
+datasetObject_pre_train3vs12<-datasetObject_pre_train
+datasetObject_pre_test3vs12<-datasetObject_pre_test
+
+datatttt_test<-datasetObject_pre_train$sillhouette$GSE120572
+datatttt_test2<-(datasetObject_pre_train$sillhouette)[[1]]
+sample(c(1:9,11:17), 10, replace=F)
+
+dim(train_1)
+{
+Positive_gene<-c()
+Negative_gene<-c()
+
+start_time <- Sys.time()
+for (i in 1:3){
+  print(i)
+  sample_list<-c(1:9,11:17) # 
+  sample_list1<-sample(sample_list, 10, replace=F) # randomly select 10 datatset from train
+  sample_list2<-sample_list[!sample_list %in% sample_list1] # the rest 6 datatset from train
+  dataObj1_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[1]]]
+  dataObj2_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[2]]]
+  dataObj3_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[3]]] 
+  dataObj4_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[4]]]
+  dataObj5_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[5]]]
+  dataObj6_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[6]]]
+  dataObj7_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[7]]]
+  dataObj8_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[8]]]
+  dataObj9_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[9]]]
+  dataObj10_Train = (datasetObject_pre_train$sillhouette)[[sample_list1[10]]]
+  print('Step1')
+  discovery_datasets_Train <- list( dataObj1_Train,dataObj2_Train,dataObj3_Train,
+                                    dataObj5_Train,dataObj6_Train,dataObj7_Train,dataObj8_Train,dataObj9_Train,
+                                    dataObj10_Train)
+  
+  names(discovery_datasets_Train) = c( dataObj1_Train$formattedName,
+                                       dataObj2_Train$formattedNam,dataObj3_Train$formattedName,
+                                       dataObj5_Train$formattedName,
+                                       dataObj6_Train$formattedName,dataObj7_Train$formattedName,
+                                       dataObj8_Train$formattedName,dataObj9_Train$formattedName,
+                                       dataObj10_Train$formattedName)
+  print('Step2')
+  # the rest 6 datatset from train
+  dataObj1_Test = (datasetObject_pre_train$sillhouette)[[sample_list2[1]]]
+  dataObj2_Test = (datasetObject_pre_train$sillhouette)[[sample_list2[2]]]
+  dataObj3_Test = (datasetObject_pre_train$sillhouette)[[sample_list2[3]]]
+  dataObj4_Test = (datasetObject_pre_train$sillhouette)[[sample_list2[4]]]
+  dataObj5_Test = (datasetObject_pre_train$sillhouette)[[sample_list2[5]]]
+  dataObj6_Test = (datasetObject_pre_train$sillhouette)[[sample_list2[6]]]
+  print('Step3')
+  validation_datasets_Test <- list( dataObj1_Test,dataObj2_Test,dataObj3_Test,dataObj4_Test,
+                                    dataObj5_Test,dataObj6_Test)
+  
+  names(validation_datasets_Test) = c( dataObj1_Test$formattedName,
+                                       dataObj2_Test$formattedNam,dataObj3_Test$formattedName,
+                                       dataObj4_Test$formattedName,dataObj5_Test$formattedName,
+                                       dataObj6_Test$formattedName)
+  print('Step4')
+  
+  exampleMetaObj_Train=list() 
+  exampleMetaObj_Train$originalData <- discovery_datasets_Train
+  exampleMetaObj_validation_Test<-list()
+  exampleMetaObj_validation_Test$originalData <- validation_datasets_Test
+  checkDataObject(exampleMetaObj_Train, "Meta", "Pre-Analysis") ###Check your metaObject before MetaAnalysis using 
+  checkDataObject(exampleMetaObj_validation_Test, "Meta", "Pre-Analysis")
+  print('Step5')
+  exampleMetaObj_Train <- runMetaAnalysis(exampleMetaObj_Train, maxCores=6,runLeaveOneOutAnalysis = FALSE)
+  exampleMetaObj_Train <- filterGenes(exampleMetaObj_Train, isLeaveOneOut = F, FDRThresh = 0.05,effectSizeThresh = 1.0) # 1 vs 2/3, es=1.0
+  exampleMetaObj_Train$filterResults[[1]]$posGeneNames<-intersect(exampleMetaObj_Train$filterResults[[1]]$posGeneNames,
+                                                                  rownames(train_1))
+  exampleMetaObj_Train$filterResults[[1]]$negGeneNames<-intersect(exampleMetaObj_Train$filterResults[[1]]$negGeneNames,
+                                                                  rownames(train_1))
+  print('Step6')
+  exampleMetaObj_validation_Test <- runMetaAnalysis(exampleMetaObj_validation_Test, maxCores=6,runLeaveOneOutAnalysis = FALSE)
+  exampleMetaObj_validation_Test <- filterGenes(exampleMetaObj_validation_Test, isLeaveOneOut = F, FDRThresh = 0.05,effectSizeThresh = 1.0) # 1 vs 2/3, es=1.0
+  exampleMetaObj_validation_Test$filterResults[[1]]$posGeneNames<-intersect(exampleMetaObj_validation_Test$filterResults[[1]]$posGeneNames,
+                                                                  rownames(train_1))
+  exampleMetaObj_validation_Test$filterResults[[1]]$negGeneNames<-intersect(exampleMetaObj_validation_Test$filterResults[[1]]$negGeneNames,
+                                                                  rownames(train_1))
+  print('Step7')
+  posGeneNames<-intersect(exampleMetaObj_Train$filterResults[[1]]$posGeneNames,
+                          exampleMetaObj_validation_Test$filterResults[[1]]$posGeneNames)
+  negGeneNames<-intersect(exampleMetaObj_Train$filterResults[[1]]$negGeneNames,
+                          exampleMetaObj_validation_Test$filterResults[[1]]$negGeneNames)
+  
+  Positive_gene<-c(posGeneNames,Positive_gene)
+  Negative_gene<-c(negGeneNames,Negative_gene)
+  print('Step8')
+  
+}
+end_time <- Sys.time()
+end_time-start_time
+}
+{
+
+set.seed(123)
+
+#这里exampleMetaObj_Train$filterResults[[1]]需要与rownames(train_1) 取交集确保在每个数据集里都出现了
+
+forwardRes <- forwardSearch( metaObject = exampleMetaObj_Train, 
+                             filterObject =exampleMetaObj_Train$filterResults[[1]])
+
+heatmapPlot(metaObject =exampleMetaObj_Train, filterObject = exampleMetaObj_Train$filterResults[[7]])
+forestPlot(metaObject =exampleMetaObj_Train, filterObject = exampleMetaObj_Train$filterResults[[1]])
+summaryROCPlot(metaObject = exampleMetaObj_validation_Test, 
+               filterObject = forwardRes , 
+               bootstrapReps = 500)
+
+exampleMetaObj_Train1vs23<-exampleMetaObj_Train
+forwardRes1vs23<-forwardRes
+
+exampleMetaObj_Train2vs13<-exampleMetaObj_Train
+forwardRes2vs13<-forwardRes
+
+exampleMetaObj_Train3vs12<-exampleMetaObj_Train
+forwardRes3vs12<-forwardRes
+
+save(forwardRes1vs23,forwardRes2vs13,forwardRes3vs12,datasetObject_pre_train1vs23,
+     datasetObject_pre_test1vs23,datasetObject_pre_train2vs13,datasetObject_pre_test2vs13,
+     datasetObject_pre_train3vs12,
+     datasetObject_pre_test3vs12,file='Predictor_forwardRes.Rdata')
+     
+     
+     
+     
+ 
+
+Wester_Prote_sub<-Wester_Prote[,c(phe_Wester_ALK_Pro[phe_Wester_ALK_Pro$MYCN=='amp',1],
+                                  phe_Wester_ALK_Pro_Normal[phe_Wester_ALK_Pro_Normal$pred_zscore==1,1],
+                                  phe_Wester_ALK_Pro_Normal[phe_Wester_ALK_Pro_Normal$pred_zscore==2,1],
+                                  phe_Wester_ALK_Pro_Normal[phe_Wester_ALK_Pro_Normal$pred_zscore==3,1])]
+
+# MYCN/MYC/AURKA/
+Wester_Prote_sub_expression<-as.data.frame(matrix(data=NA,nrow=34,ncol=6,
+                                                  dimnames=list(c(),c('Sample','Subgroup','MYCN',
+                                                                      'MYC','AURKA','AURKB'))))
+Wester_Prote_sub_expression$Sample<-colnames(Wester_Prote_sub)
+Wester_Prote_sub_expression$Subgroup<-c(rep('AMP',12),
+                                        rep('Subgroup1',11),
+                                        rep('Subgroup2',2),
+                                        rep('Subgroup3',9))
+Wester_Prote_sub_expression$MYCN<-t(Wester_Prote_sub[c('MYCN'),])
+Wester_Prote_sub_expression$MYC<-t(Wester_Prote_sub[c('MYC'),])
+Wester_Prote_sub_expression$AURKA<-t(Wester_Prote_sub[c('AURKA'),])
+Wester_Prote_sub_expression$AURKB<-t(Wester_Prote_sub[c('AURKB'),])
+my_comparisons_train <- list( c("Subgroup1", "AMP"), 
+                              c("Subgroup2", "AMP"),
+                              c("Subgroup3", "AMP"),
+                              c('Subgroup1','Subgroup2'),
+                              c('Subgroup1','Subgroup3'),
+                              c('Subgroup2','Subgroup3'))
+
+
+aa<-ggviolin(Wester_Prote_sub_expression, x = "Subgroup", y = 'MYCN',
+             fill = "Subgroup",
+             add = "boxplot", add.params = list(fill = "white"),palette = c("#D22C6C","#6688AB", "#97C17E",'#BA86B5'))+
+  stat_compare_means(comparisons = my_comparisons_train,size=10)+
+  ylab("MYCN expression\n") +
+  xlab('')+
+  #scale_y_continuous(breaks=seq(0, 1, 0.1))+
+  #coord_cartesian(ylim = c(-2500,3000))+
+  #geom_hline(yintercept = median(gsva_MYC_matrix[Purity_Test$Group=='MYCN_AMP',]$ImmuneScore), 
+  #          size=2,linetype = 2)+
+  theme_classic()+
+  theme(legend.position = "none",
+        axis.text.x = element_text(  size=30,color = 'black',hjust = 0.5,vjust=0),
+        axis.text.y = element_text( size=30,color = 'black'),
+        axis.line = element_line(colour = "black", size = 1, linetype = "solid"),
+        axis.title.y = element_text(color="black", size=40,vjust=0),
+        plot.margin = unit(c(1,1,1,1),"cm"))
+
+bb<-ggviolin(Wester_Prote_sub_expression, x = "Subgroup", y = 'MYC',
+             fill = "Subgroup",
+             add = "boxplot", add.params = list(fill = "white"),palette = c("#D22C6C","#6688AB", "#97C17E",'#BA86B5'))+
+  stat_compare_means(comparisons = my_comparisons_train,size=10)+
+  ylab("MYC expression\n") +
+  xlab('')+
+  #scale_y_continuous(breaks=seq(0, 1, 0.1))+
+  #coord_cartesian(ylim = c(-2500,3000))+
+  #geom_hline(yintercept = median(gsva_MYC_matrix[Purity_Test$Group=='MYCN_AMP',]$ImmuneScore), 
+  #          size=2,linetype = 2)+
+  theme_classic()+
+  theme(legend.position = "none",
+        axis.text.x = element_text(  size=30,color = 'black',hjust = 0.5,vjust=0),
+        axis.text.y = element_text( size=30,color = 'black'),
+        axis.line = element_line(colour = "black", size = 1, linetype = "solid"),
+        axis.title.y = element_text(color="black", size=40,vjust=0),
+        plot.margin = unit(c(1,1,1,1),"cm"))
+
+cc<-ggviolin(Wester_Prote_sub_expression, x = "Subgroup", y = 'AURKA',
+             fill = "Subgroup",
+             add = "boxplot", add.params = list(fill = "white"),palette = c("#D22C6C","#6688AB", "#97C17E",'#BA86B5'))+
+  stat_compare_means(comparisons = my_comparisons_train,size=10)+
+  ylab("AURKA expression\n") +
+  xlab('')+
+  #scale_y_continuous(breaks=seq(0, 1, 0.1))+
+  #coord_cartesian(ylim = c(-2500,3000))+
+  #geom_hline(yintercept = median(gsva_MYC_matrix[Purity_Test$Group=='MYCN_AMP',]$ImmuneScore), 
+  #          size=2,linetype = 2)+
+  theme_classic()+
+  theme(legend.position = "none",
+        axis.text.x = element_text(  size=30,color = 'black',hjust = 0.5,vjust=0),
+        axis.text.y = element_text( size=30,color = 'black'),
+        axis.line = element_line(colour = "black", size = 1, linetype = "solid"),
+        axis.title.y = element_text(color="black", size=40,vjust=0),
+        plot.margin = unit(c(1,1,1,1),"cm"))
+
+dd<-ggviolin(Wester_Prote_sub_expression, x = "Subgroup", y = 'AURKB',
+             fill = "Subgroup",
+             add = "boxplot", add.params = list(fill = "white"),palette = c("#D22C6C","#6688AB", "#97C17E",'#BA86B5'))+
+  stat_compare_means(comparisons = my_comparisons_train,size=10)+
+  ylab("AURKB expression\n") +
+  xlab('')+
+  #scale_y_continuous(breaks=seq(0, 1, 0.1))+
+  #coord_cartesian(ylim = c(-2500,3000))+
+  #geom_hline(yintercept = median(gsva_MYC_matrix[Purity_Test$Group=='MYCN_AMP',]$ImmuneScore), 
+  #          size=2,linetype = 2)+
+  theme_classic()+
+  theme(legend.position = "none",
+        axis.text.x = element_text(  size=30,color = 'black',hjust = 0.5,vjust=0),
+        axis.text.y = element_text( size=30,color = 'black'),
+        axis.line = element_line(colour = "black", size = 1, linetype = "solid"),
+        axis.title.y = element_text(color="black", size=40,vjust=0),
+        plot.margin = unit(c(1,1,1,1),"cm"))
+
+ggarrange(aa, bb, cc ,dd, 
+          ncol = 2, nrow = 2)
+
+ggsave('Wester_Prote_sub_expression_AMP.pdf',width = 25,height = 25) # 3组 宽12， 4组 宽 16
+     
+     
