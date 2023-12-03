@@ -214,4 +214,3 @@ pdf('E.MEXP_3517_GPL5175_42.pdf',width = 10,height = 10)
 rocPlot(datasetObject = exampleMetaObj_validation$originalData$E.MEXP_3517_GPL5175_42,
         filterObject = exampleMetaObj$filterResults[[1]])
 dev.off()
-
