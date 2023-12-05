@@ -147,7 +147,7 @@ ks.test(MHC_CYT[1749:2064,3], MHC_CYT[2065:2434,3])
 ks.test(MHC_CYT[1:714,4], MHC_CYT[2065:2434,4])
 ks.test(MHC_CYT[715:1748,4], MHC_CYT[2065:2434,4])
 ks.test(MHC_CYT[1749:2064,4], MHC_CYT[2065:2434,4])
-#### Figure 6d & Supplementary Figure 5a/b ####
+#### Figure 6d & Supplementary Figure 7a/b ####
 #### Tumor purity ####
 library(utils)
 rforge <- "http://r-forge.r-project.org"
@@ -360,7 +360,7 @@ pancreas.integrated <- FindClusters(pancreas_12.integrated, verbose = FALSE,reso
 pdf(paste0('1111-Integrated_Resolution_',i,"_CellCluster-UMAPPlot_",max(40),"PC.pdf"),width = 10,height = 8)
 DimPlot(pancreas.integrated,reduction = "umap", pt.size=0.5,label = T,label.size = 8)
 dev.off()
-#### Supplementary Figure 5c ####
+#### Supplementary Figure 7c ####
 pdf(paste0('1111-Integrated_Resolution_',i,"_CellCluster-UMAPPlot_",max(40),"PC-group.pdf"),width = 48,height = 8)
 DimPlot(pancreas.integrated, reduction = "umap", split.by = "group")
 dev.off()
