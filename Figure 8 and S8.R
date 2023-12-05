@@ -57,7 +57,7 @@ forwardRes <- forwardSearch( metaObject = exampleMetaObj,
                              filterObject = exampleMetaObj$filterResults$FDR0.05_es1.3_nStudies1_looaFALSE_hetero0,
                              forwardThresh = 0.0000000000001)
 
-#### Supplementary Figure 6a ####
+#### Supplementary Figure 8a ####
 summaryROCPlot(metaObject = exampleMetaObj_validation, 
                filterObject = exampleMetaObj$filterResults$FDR0.05_es1.3_nStudies1_looaFALSE_hetero0, 
                bootstrapReps = 100)
@@ -318,7 +318,7 @@ GSE85047_Califano_sankeywheel<-read.xlsx('/Comparison_Public_Subgroup/Andrea_Cal
                                        sheet = 5)
 GSE49710_Westermann_sankeywheel<-read.xlsx('Comparison_Public_Subgroup/Westermann_Nature_Cancer_GSE49710.xlsx',
                                            sheet = 4)
-#### Figure 8c & Supplementary Figure 6b ####
+#### Figure 8c & Supplementary Figure 8b ####
 sankeywheel(from = GSE85047_Califano_sankeywheel$fro,
             to = GSE85047_Califano_sankeywheel$to,
             weight =GSE85047_Califano_sankeywheel$weight,
