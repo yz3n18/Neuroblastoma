@@ -45,7 +45,7 @@ draw(Heatmap(n, name = "Value", column_km = 1,column_km_repeats = 1,
              show_parent_dend_line = FALSE),padding = unit(c(2, 2, 2, 2), "cm"))
 dev.off()
 
-#### Supplementary Figure 3 WGCNA ####
+#### Supplementary Figure 5 WGCNA ####
 library(WGCNA)
 library(doParallel) ##
 registerDoParallel(cores=4)
@@ -79,7 +79,7 @@ sft$powerEstimate
 
 #### WGCNA step by step ####
 datExpr<-merge_data_batch_MYCN_amp_train_train1_wgcna
-softPower = 5
+softPower = 6
 adjacency = adjacency(datExpr, power = softPower,type='signed hybrid')
 ?adjacency
 ## Topological Overlap Matrix (TOM)
