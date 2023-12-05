@@ -1,5 +1,5 @@
 #### Figure 2 ####
-#### Figure 2c/d & Supplementary Figure 2c  ####
+#### Figure 2c/d & Supplementary Figure 4c  ####
 BiocManager::install('survminer')
 library(survminer)
 library(survival)
@@ -84,7 +84,7 @@ ggforest(Gcox_Risk,data = survival_data_AMP_Cox_AURKA_MYCN_Risk,cpositions = c(0
          fontsize =1.8,refLabel = 'reference',noDigits = 2)
 dev.off()
 
-#### Figure 2f & Supplementary Figure 2d ####
+#### Figure 2f & Supplementary Figure 4d ####
 library(pec)
 library(prodlim)
 library(survival)
